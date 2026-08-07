@@ -1,0 +1,5 @@
+# Stack is deliberately small: Pandas for loading, DuckDB for all metrics,
+# Streamlit for the dashboard. Nothing else.
+pandas>=2.0
+duckdb>=1.0
+streamlit>=1.30

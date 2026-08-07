@@ -1,0 +1,39 @@
+# Raw and derived data is NEVER committed.
+# Freddie Mac's Single-Family Loan-Level Dataset terms restrict use to internal
+# analysis and require a licensing agreement for redistribution. See DATA.md for
+# how to register and download it yourself.
+data/*
+!data/.gitkeep
+
+# DuckDB warehouse (built from the raw files, so equally not redistributable)
+*.duckdb
+*.duckdb.wal
+*.db
+
+# Generated outputs
+output/*
+!output/.gitkeep
+powerbi/*.csv
+powerbi/*.xlsx
+
+# Python
+__pycache__/
+*.py[cod]
+.Python
+build/
+dist/
+*.egg-info/
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# Notebooks
+.ipynb_checkpoints/
+
+# IDE / OS
+.idea/
+.vscode/
+*.swp
+.DS_Store
