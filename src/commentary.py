@@ -68,7 +68,7 @@ def build(con, period):
     c = cur.iloc[0]
     quarter = c["reporting_quarter"]
 
-    add("PORTFOLIOPULSE - PORTFOLIO COMMENTARY")
+    add("PORTFOLIO PULSE - PORTFOLIO COMMENTARY")
     add("=" * 70)
     add("Reporting quarter : %s (period %d)" % (quarter, period))
     add("Generated         : %s" % datetime.datetime.now().strftime("%Y-%m-%d %H:%M"))

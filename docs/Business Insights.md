@@ -1,6 +1,6 @@
 # Business Insights
 
-Five findings from the PortfolioPulse warehouse. Every figure below was produced by
+Five findings from the Portfolio Pulse warehouse. Every figure below was produced by
 the query printed beneath it, against the built views — nothing is estimated and
 nothing is rounded in a flattering direction.
 

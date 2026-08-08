@@ -15,7 +15,7 @@ A lender holding a book of loans needs to answer, every reporting period:
 5. **Why did the numbers move?** Not just that they moved — attribution to the
    segment responsible, written down.
 
-PortfolioPulse answers all five on a real loan-level panel.
+Portfolio Pulse answers all five on a real loan-level panel.
 
 ## Why a panel matters
 

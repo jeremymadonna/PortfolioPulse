@@ -1,4 +1,4 @@
-"""PortfolioPulse dashboard.
+"""Portfolio Pulse dashboard.
 
 Run:  streamlit run app.py
 
@@ -16,7 +16,7 @@ import streamlit as st
 DB_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)),
                        "data", "portfoliopulse.duckdb")
 
-st.set_page_config(page_title="PortfolioPulse", page_icon="•", layout="wide")
+st.set_page_config(page_title="Portfolio Pulse", page_icon="•", layout="wide")
 
 
 @st.cache_resource
@@ -43,7 +43,7 @@ if not os.path.exists(DB_PATH):
     st.stop()
 
 # --- sidebar: slicers --------------------------------------------------------
-st.sidebar.title("PortfolioPulse")
+st.sidebar.title("Portfolio Pulse")
 st.sidebar.caption("Credit portfolio monitoring")
 page = st.sidebar.radio("Page", ["Executive Summary", "Portfolio and Delinquency",
                                  "Vintage and Loss", "Data Quality"])
