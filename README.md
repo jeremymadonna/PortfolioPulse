@@ -1,4 +1,4 @@
-# PortfolioPulse
+# Portfolio Pulse
 
 ## Credit Portfolio Risk Analytics
 
