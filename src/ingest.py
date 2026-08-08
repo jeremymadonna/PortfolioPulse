@@ -12,6 +12,7 @@ The grain is QUARTERLY. See src/config.py for why, and for the evidence behind
 the calendar mapping.
 """
 
+import datetime
 import os
 import sys
 
@@ -133,16 +134,118 @@ def build_dim_loan(con):
                benign=config.BENIGN_VINTAGE, stressed=config.STRESSED_VINTAGE))
 
 
+def build_dq_results(con):
+    """The data quality register. Phase 1 seeds it; Phase 4 appends to it.
+
+    Findings are recorded, never hidden. Where a defect IS corrected, the
+    correction is logged here with its row count so the number can be traced.
+    """
+    con.execute("""
+    CREATE TABLE IF NOT EXISTS dq_results (
+        run_timestamp TIMESTAMP, phase VARCHAR, rule_name VARCHAR,
+        severity VARCHAR, status VARCHAR, affected_rows BIGINT, detail VARCHAR)
+    """)
+
+
+# One timestamp for the whole run, set in main(). DuckDB's now() is per
+# statement, which would give each finding a different run id and break any
+# "show me this run's findings" query.
+RUN_TS = None
+
+
+def log_dq(con, phase, rule, severity, status, rows, detail):
+    con.execute("INSERT INTO dq_results VALUES (?, ?, ?, ?, ?, ?, ?)",
+                [RUN_TS, phase, rule, severity, status, rows, detail])
+
+
 def build_fact_loan_quarter(con):
+    """The quarterly panel, one row per loan per period.
+
+    Two defects in the source are handled here, both logged to dq_results:
+
+    1. DUPLICATE LOAN-PERIODS. 339 loan-period pairs appear twice, 27 of them
+       with conflicting balances. One row is kept per loan-period, choosing the
+       LOWER balance as the conservative reading, and the drop is logged.
+
+    2. PANEL GAPS. Around 1,485 loans are missing one or two periods mid-panel.
+       These are forward-filled: the last reported balance, LTV, rate and status
+       are carried into the gap. Every filled row is marked is_forward_filled so
+       it can be excluded from any analysis that should only see reported data.
+       The macro variables are NOT carried forward -- they are properties of the
+       period, not the loan, so filled rows take the true value for that period.
+    """
+    # --- raw panel, deduplicated -------------------------------------------
+    con.execute("""
+    CREATE OR REPLACE TABLE stg_panel AS
+    SELECT id AS loan_id, time AS period, orig_time,
+           balance_time, LTV_time, interest_rate_time, status_time,
+           default_time, payoff_time
+    FROM {src}
+    -- Keep one row per loan-period, lowest balance first (conservative).
+    QUALIFY row_number() OVER (PARTITION BY id, time ORDER BY balance_time ASC) = 1
+    """.format(src=SRC))
+
+    raw_rows = con.execute("SELECT count(*) FROM %s" % SRC).fetchone()[0]
+    kept = con.execute("SELECT count(*) FROM stg_panel").fetchone()[0]
+    dropped = raw_rows - kept
+    log_dq(con, "1-ingest", "duplicate_loan_period", "HIGH",
+           "FAIL" if dropped else "PASS", dropped,
+           "Duplicate loan-period rows in source; kept the lower balance of each pair")
+
+    # --- macro variables are period-level facts, held once ------------------
+    con.execute("""
+    CREATE OR REPLACE TABLE dim_period_macro AS
+    SELECT time AS period, max(hpi_time) AS house_price_index,
+           max(gdp_time) AS gdp_growth, max(uer_time) AS unemployment_rate
+    FROM {src} GROUP BY time
+    """.format(src=SRC))
+
+    # --- forward-fill the gaps ---------------------------------------------
+    con.execute("""
+    CREATE OR REPLACE TABLE stg_panel_filled AS
+    WITH bounds AS (
+        SELECT loan_id, min(period) AS mn, max(period) AS mx, any_value(orig_time) AS orig_time
+        FROM stg_panel GROUP BY loan_id
+    ),
+    spine AS (   -- every period between a loan's first and last report
+        SELECT loan_id, orig_time, unnest(generate_series(mn, mx)) AS period FROM bounds
+    ),
+    joined AS (
+        SELECT s.loan_id, s.period, s.orig_time,
+               p.balance_time, p.LTV_time, p.interest_rate_time,
+               p.status_time, p.default_time, p.payoff_time,
+               p.loan_id IS NULL AS is_forward_filled
+        FROM spine s LEFT JOIN stg_panel p USING (loan_id, period)
+    )
+    SELECT loan_id, period, orig_time, is_forward_filled,
+           last_value(balance_time      IGNORE NULLS) OVER w AS balance_time,
+           last_value(LTV_time          IGNORE NULLS) OVER w AS LTV_time,
+           last_value(interest_rate_time IGNORE NULLS) OVER w AS interest_rate_time,
+           last_value(status_time       IGNORE NULLS) OVER w AS status_time,
+           last_value(default_time      IGNORE NULLS) OVER w AS default_time,
+           last_value(payoff_time       IGNORE NULLS) OVER w AS payoff_time
+    FROM joined
+    WINDOW w AS (PARTITION BY loan_id ORDER BY period
+                 ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW)
+    """)
+
+    filled = con.execute(
+        "SELECT count(*) FROM stg_panel_filled WHERE is_forward_filled").fetchone()[0]
+    filled_loans = con.execute(
+        "SELECT count(DISTINCT loan_id) FROM stg_panel_filled WHERE is_forward_filled").fetchone()[0]
+    log_dq(con, "1-ingest", "panel_period_gap", "MEDIUM",
+           "FAIL" if filled else "PASS", filled,
+           "Missing mid-panel periods forward-filled across %d loans; rows marked "
+           "is_forward_filled" % filled_loans)
+
     con.execute("""
     CREATE OR REPLACE TABLE fact_loan_quarter AS
     SELECT
-        p.id                                      AS loan_id,
-        p.time                                    AS period,
+        p.loan_id,
+        p.period,
         {reporting}                               AS reporting_quarter,
-        -- Quarters on book: the analogue of months on book. Period 1 of a
-        -- loan's life is the quarter after origination.
-        p.time - p.orig_time                      AS quarters_on_book,
+        -- Quarters on book: the analogue of months on book.
+        p.period - p.orig_time                    AS quarters_on_book,
         p.balance_time                            AS current_balance,
         p.LTV_time                                AS current_ltv,
         {cur_ltv_band}                            AS current_ltv_band,
@@ -153,17 +256,20 @@ def build_fact_loan_quarter(con):
                            WHEN 2 THEN '3. Payoff'
                            ELSE '9. Unknown' END  AS status_bucket,
         p.default_time, p.payoff_time,
-        -- Macro covariates travel with the panel, so commentary can name the
-        -- cycle rather than just report that a number moved.
-        p.hpi_time                                AS house_price_index,
-        p.gdp_time                                AS gdp_growth,
-        p.uer_time                                AS unemployment_rate,
+        -- TRUE for rows synthesised to close a reporting gap. Exclude these
+        -- from anything that must only see reported observations.
+        p.is_forward_filled,
+        m.house_price_index, m.gdp_growth, m.unemployment_rate,
         l.origination_vintage, l.credit_score_band, l.ltv_band,
         l.property_type, l.occupancy, l.focus_cohort, l.observed_from_origination
-    FROM {src} p
-    JOIN dim_loan l ON l.loan_id = p.id
-    """.format(src=SRC, reporting=calendar("p.time"),
+    FROM stg_panel_filled p
+    JOIN dim_loan l        ON l.loan_id = p.loan_id
+    LEFT JOIN dim_period_macro m ON m.period = p.period
+    """.format(reporting=calendar("p.period"),
                cur_ltv_band=band_case("CAST(p.LTV_time AS INTEGER)", config.LTV_BANDS)))
+
+    con.execute("DROP TABLE IF EXISTS stg_panel")
+    con.execute("DROP TABLE IF EXISTS stg_panel_filled")
 
 
 def build_fact_credit_event(con):
@@ -218,6 +324,13 @@ def report(con):
         n = con.execute("SELECT count(*) FROM " + t).fetchone()[0]
         print("  %-20s %12s" % (t, "{:,}".format(n)))
 
+    print("\n--- data quality findings recorded at ingestion ---")
+    print(con.execute("""SELECT rule_name, severity, status, affected_rows, detail
+                         FROM dq_results WHERE phase='1-ingest'
+                         AND run_timestamp=(SELECT max(run_timestamp) FROM dq_results)
+                         ORDER BY rule_name
+                      """).df().to_string(index=False))
+
     print("\n--- period range check (no gaps expected) ---")
     r = con.execute("""SELECT min(period), max(period), count(*),
                               max(period)-min(period)+1 AS expected FROM dim_date""").fetchone()
@@ -256,9 +369,12 @@ def main():
             "Missing %s\n\nThe data is not committed to this repo. See DATA.md "
             "for where to download it." % CSV_PATH)
 
+    global RUN_TS
+    RUN_TS = datetime.datetime.now()
     con = duckdb.connect(DB_PATH)
     print("building %s" % DB_PATH)
     verify_schema(con)
+    build_dq_results(con)
     build_dim_loan(con)
     build_fact_loan_quarter(con)
     build_fact_credit_event(con)
