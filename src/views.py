@@ -17,7 +17,7 @@ import config
 
 REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 SQL_DIR = os.path.join(REPO, "sql")
-DB_PATH = os.path.join(REPO, "data", "arrearsiq.duckdb")
+DB_PATH = os.path.join(REPO, "data", "portfoliopulse.duckdb")
 
 # Order matters only in that each view is independent; listed explicitly so a
 # stray .sql file in the directory cannot silently become part of the pipeline.

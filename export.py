@@ -12,7 +12,7 @@ import os
 import duckdb
 
 REPO = os.path.dirname(os.path.abspath(__file__))
-DB_PATH = os.path.join(REPO, "data", "arrearsiq.duckdb")
+DB_PATH = os.path.join(REPO, "data", "portfoliopulse.duckdb")
 OUT_DIR = os.path.join(REPO, "powerbi")
 
 # The dimensions go too, so the BI tool can build its own relationships rather

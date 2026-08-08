@@ -1,4 +1,4 @@
-"""ArrearsIQ dashboard.
+"""PortfolioPulse dashboard.
 
 Run:  streamlit run app.py
 
@@ -14,9 +14,9 @@ import pandas as pd
 import streamlit as st
 
 DB_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)),
-                       "data", "arrearsiq.duckdb")
+                       "data", "portfoliopulse.duckdb")
 
-st.set_page_config(page_title="ArrearsIQ", page_icon="•", layout="wide")
+st.set_page_config(page_title="PortfolioPulse", page_icon="•", layout="wide")
 
 
 @st.cache_resource
@@ -43,7 +43,7 @@ if not os.path.exists(DB_PATH):
     st.stop()
 
 # --- sidebar: slicers --------------------------------------------------------
-st.sidebar.title("ArrearsIQ")
+st.sidebar.title("PortfolioPulse")
 st.sidebar.caption("Credit portfolio monitoring")
 page = st.sidebar.radio("Page", ["Executive Summary", "Portfolio and Delinquency",
                                  "Vintage and Loss", "Data Quality"])

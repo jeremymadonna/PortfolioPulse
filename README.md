@@ -1,6 +1,8 @@
-# ArrearsIQ
+# PortfolioPulse
 
-**Credit portfolio monitoring and risk analytics on a real loan-level panel.**
+## Credit Portfolio Risk Analytics
+
+**Monitoring, delinquency and vintage analytics on a real loan-level panel.**
 
 A reporting pipeline over 50,000 US residential mortgages observed quarterly
 from 2000 to 2015 — through the housing boom, the crash, and the recovery. It
@@ -13,7 +15,7 @@ exposure by segment.
 > framework, rule-based commentary, a four-page Streamlit dashboard, Power BI
 > export and full documentation.
 
-![ArrearsIQ dashboard — Executive Summary](docs/dashboard.png)
+![PortfolioPulse dashboard — Executive Summary](docs/dashboard.png)
 
 *Executive Summary at 2015Q1. The balance chart traces the book through the
 2006 peak and the run-off that followed; the right-hand chart plots quarterly
@@ -205,7 +207,7 @@ the warehouse. Limitations are stated in the UI rather than hidden from it.
 
 ## Deploying to Streamlit Community Cloud
 
-The app needs `data/arrearsiq.duckdb`, which is gitignored and not
+The app needs `data/portfoliopulse.duckdb`, which is gitignored and not
 redistributable, so the deployment cannot simply clone and run.
 
 1. Push the repo to GitHub (already done — the data stays out of it).
