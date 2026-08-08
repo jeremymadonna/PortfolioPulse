@@ -8,9 +8,10 @@ builds a star schema in DuckDB, computes every metric in versioned SQL, and
 surfaces portfolio size, delinquency, roll rates, vintage curves and default
 exposure by segment.
 
-> **Status:** Phases 1–2 complete (ingestion, star schema, six reporting views).
-> Phases 3–7 in progress: provisioning, data quality framework, monthly
-> commentary, Streamlit dashboard, documentation.
+> **Status:** complete. Ingestion and star schema, eight reporting views,
+> IFRS 9 staging and illustrative provisioning, a ten-rule data quality
+> framework, rule-based commentary, a four-page Streamlit dashboard, Power BI
+> export and full documentation.
 
 ## Why this dataset
 
@@ -50,9 +51,17 @@ python3 -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt
 
 # Download the data first -- see DATA.md
-python src/ingest.py     # build the star schema
-python src/views.py      # create the six reporting views
+python src/ingest.py       # build the star schema
+python src/views.py        # create the eight reporting views
+python src/quality.py      # run the ten data quality rules
+python src/commentary.py   # write commentary for the latest quarter
+python export.py           # refresh the Power BI CSVs
+streamlit run app.py       # serve the dashboard
 ```
+
+Order matters: views read the tables ingest builds, the quality rules reconcile
+two of the views against each other, and the commentary reports the current
+failing rules. See [docs/Monthly Reporting Process.md](docs/Monthly%20Reporting%20Process.md).
 
 ## The star schema
 
@@ -82,6 +91,8 @@ opens with the business question it answers.
 | `vw_roll_rates` | Status at quarter *t* against *t+1*, balance moved, roll rate |
 | `vw_vintage_performance` | Cumulative default rate by cohort, indexed on quarters on book |
 | `vw_loss_recovery` | Default counts, exposure at default and LTV at default by segment |
+| `vw_provision` | IFRS 9 stage, exposure, observed PD, provision and coverage ratio |
+| `vw_provision_movement` | Opening, increase, decrease, closing provision, with the reconciliation carried as a column |
 
 ## Recovering the calendar
 
@@ -162,6 +173,60 @@ never carried forward — they belong to the period, not the loan.
 | Migration of publications to a new data model | Star schema built from a raw flat source file |
 | SQL | Six reporting views using CTEs and window functions (`LAG`, running sums, partitioned shares) |
 | Power BI and Tableau | Power BI dashboard from exported marts *(Phase 6)* |
+
+## Dashboard
+
+Four pages via the sidebar: Executive Summary, Portfolio and Delinquency,
+Vintage and Loss, Data Quality. Slicers on reporting quarter, origination
+vintage and credit score band.
+
+```bash
+streamlit run app.py
+```
+
+<!-- Add a screenshot here: run the dashboard, capture the Executive Summary
+     page, save it as docs/dashboard.png and uncomment the line below. -->
+<!-- ![Dashboard](docs/dashboard.png) -->
+
+The dashboard queries and lays out — it does not calculate. Every figure comes
+from a SQL view, and the connection is opened read-only so the app cannot mutate
+the warehouse. Limitations are stated in the UI rather than hidden from it.
+
+## Deploying to Streamlit Community Cloud
+
+The app needs `data/portfoliopulse.duckdb`, which is gitignored and not
+redistributable, so the deployment cannot simply clone and run.
+
+1. Push the repo to GitHub (already done — the data stays out of it).
+2. At [share.streamlit.io](https://share.streamlit.io) create an app pointing at
+   this repo, branch `main`, main file `app.py`.
+3. **Supply the warehouse.** Either add a first-run step that downloads
+   `mortgage.csv` and calls `src/ingest.py` and `src/views.py`, or attach the
+   prebuilt `.duckdb` file through a storage bucket the app can reach. Do not
+   commit either to the repo.
+4. `requirements.txt` is picked up automatically. Set the Python version under
+   *Advanced settings* if you need to pin it.
+
+Without step 3 the app starts and shows its "no database found" message rather
+than crashing, which is deliberate.
+
+## Documentation
+
+| Document | Covers |
+|---|---|
+| [Business Problem](docs/Business%20Problem.md) | What portfolio monitoring answers, and why a panel is required |
+| [KPI Definitions](docs/KPI%20Definitions.md) | Every metric, its formula and its source view |
+| [Data Dictionary](docs/Data%20Dictionary.md) | Every table and column, generated from the live schema |
+| [SQL Logic](docs/SQL%20Logic.md) | View-by-view techniques and validation |
+| [Data Quality Rules](docs/Data%20Quality%20Rules.md) | The ten rules, scoring, and findings on the real data |
+| [Monthly Reporting Process](docs/Monthly%20Reporting%20Process.md) | The run order, and how to read the output |
+| [Known Assumptions](docs/Known%20Assumptions.md) | Every choice that affects a number |
+| [Business Insights](docs/Business%20Insights.md) | Template — findings to be written after reviewing the analysis |
+| [DATA.md](DATA.md) | How to obtain the data |
+
+`notebooks/01_exploration.ipynb` profiles the raw file — shape, dtypes, missing
+values, status distribution, and the two defects that profiling turned up. It
+shows working; it is not part of the pipeline.
 
 ## Licence
 
