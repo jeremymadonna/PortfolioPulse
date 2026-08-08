@@ -78,3 +78,34 @@ LTV_BANDS = [(0, 60, "1. <=60"), (61, 70, "2. 61-70"), (71, 80, "3. 71-80"),
 
 # status_time is the loan's state in that period.
 STATUS_MEANING = {0: "1. Active", 1: "2. Default", 2: "3. Payoff"}
+
+
+# --- Phase 3: IFRS 9 staging and provisioning --------------------------------
+# ILLUSTRATIVE ONLY. Nothing below is an accounting allowance. A bank stages a
+# mortgage book on far more than this and validates its loss estimates; this is
+# a rules-based exercise to show the reporting mechanics.
+#
+# STAGING DEVIATES FROM THE BRIEF, because it has to. The brief stages on months
+# delinquent (Stage 3 at 3+, Stage 2 at 1-2). This dataset has no delinquency
+# field at all, so the trigger for a significant increase in credit risk has to
+# come from somewhere observable. The chosen proxy is NEGATIVE EQUITY: a loan
+# whose current loan-to-value exceeds this threshold is worth less than it owes,
+# which is the strongest observable predictor of mortgage default available here.
+#
+#   Stage 3  loan has defaulted (credit-impaired)
+#   Stage 2  current LTV above the threshold below (significant increase in risk)
+#   Stage 1  everything else (performing)
+SICR_LTV_THRESHOLD = 100          # current LTV above this = negative equity
+
+# Loss given default: the share of the defaulted balance not recovered.
+# THIS IS AN ASSUMPTION, NOT AN OBSERVATION. The brief asks for observed loss
+# severity, but this source records no recovery, expense or realised loss
+# amounts, so severity cannot be measured from it (see DATA.md). 30% is a
+# conventional through-the-cycle figure for US prime mortgage. Every provision
+# number scales linearly with it -- change it here and nothing else moves.
+ASSUMED_LOSS_GIVEN_DEFAULT = 0.30
+
+# Probability of default IS observed from the data, per segment, at two
+# horizons: 4 quarters ahead for Stage 1 (IFRS 9's 12-month ECL) and lifetime
+# for Stage 2 and 3.
+PD_HORIZON_QUARTERS = 4
