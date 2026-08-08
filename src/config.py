@@ -109,3 +109,14 @@ ASSUMED_LOSS_GIVEN_DEFAULT = 0.30
 # horizons: 4 quarters ahead for Stage 1 (IFRS 9's 12-month ECL) and lifetime
 # for Stage 2 and 3.
 PD_HORIZON_QUARTERS = 4
+
+
+# --- Phase 5: commentary thresholds ------------------------------------------
+# A movement smaller than these is not worth a sentence. Raising a threshold
+# makes the commentary quieter, not less accurate.
+COMMENTARY_THRESHOLDS = {
+    "balance_growth_pct": 1.0,        # quarter-over-quarter balance move
+    "default_rate_pct_points": 0.25,  # change in quarterly default rate
+    "provision_growth_pct": 2.0,      # change in closing provision
+    "coverage_ratio_pct_points": 0.25,
+}
