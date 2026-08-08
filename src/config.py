@@ -1,4 +1,4 @@
-"""Dataset schema, banding and analysis choices for PortfolioPulse.
+"""Dataset schema, banding and analysis choices for ArrearsIQ.
 
 SOURCE: the `mortgage` panel from Credit Risk Analytics (Baesens, Roesch &
 Scheule, Wiley 2016), distributed at creditriskanalytics.net. It is a randomised

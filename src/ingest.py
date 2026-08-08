@@ -24,7 +24,7 @@ import config
 REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 DATA_DIR = os.path.join(REPO, "data")
 CSV_PATH = os.path.join(DATA_DIR, "mortgage.csv")
-DB_PATH = os.path.join(DATA_DIR, "portfoliopulse.duckdb")
+DB_PATH = os.path.join(DATA_DIR, "arrearsiq.duckdb")
 
 SRC = "read_csv('%s', header=true)" % CSV_PATH
 

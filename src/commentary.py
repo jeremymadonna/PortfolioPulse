@@ -23,7 +23,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import config
 
 REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-DB_PATH = os.path.join(REPO, "data", "portfoliopulse.duckdb")
+DB_PATH = os.path.join(REPO, "data", "arrearsiq.duckdb")
 OUT_DIR = os.path.join(REPO, "output")
 T = config.COMMENTARY_THRESHOLDS
 
@@ -68,7 +68,7 @@ def build(con, period):
     c = cur.iloc[0]
     quarter = c["reporting_quarter"]
 
-    add("PORTFOLIOPULSE - PORTFOLIO COMMENTARY")
+    add("ARREARSIQ - PORTFOLIO COMMENTARY")
     add("=" * 70)
     add("Reporting quarter : %s (period %d)" % (quarter, period))
     add("Generated         : %s" % datetime.datetime.now().strftime("%Y-%m-%d %H:%M"))

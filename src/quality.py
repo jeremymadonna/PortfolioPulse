@@ -25,7 +25,7 @@ import sys
 import duckdb
 
 REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-DB_PATH = os.path.join(REPO, "data", "portfoliopulse.duckdb")
+DB_PATH = os.path.join(REPO, "data", "arrearsiq.duckdb")
 
 # Severity drives the weighted score. A wrong balance matters more than a
 # missing descriptive attribute, and the score should say so.

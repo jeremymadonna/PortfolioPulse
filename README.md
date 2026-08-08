@@ -1,4 +1,4 @@
-# PortfolioPulse
+# ArrearsIQ
 
 **Credit portfolio monitoring and risk analytics on a real loan-level panel.**
 
@@ -199,7 +199,7 @@ the warehouse. Limitations are stated in the UI rather than hidden from it.
 
 ## Deploying to Streamlit Community Cloud
 
-The app needs `data/portfoliopulse.duckdb`, which is gitignored and not
+The app needs `data/arrearsiq.duckdb`, which is gitignored and not
 redistributable, so the deployment cannot simply clone and run.
 
 1. Push the repo to GitHub (already done — the data stays out of it).

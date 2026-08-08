@@ -14,7 +14,7 @@ import pandas as pd
 import streamlit as st
 
 DB_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)),
-                       "data", "portfoliopulse.duckdb")
+                       "data", "arrearsiq.duckdb")
 
 st.set_page_config(page_title="ArrearsIQ", page_icon="•", layout="wide")
 
