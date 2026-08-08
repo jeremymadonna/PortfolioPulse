@@ -40,8 +40,10 @@ against something that actually happened rather than a placid book where every
 chart is a flat line. Default rates, staging, provisions and the commentary
 generator all have something to say.
 
-## Who this is for
+## How it is built
 
-Written as a portfolio piece for a credit portfolio monitoring / risk analytics
-role. Design choices favour the obvious over the clever, because the point is to
-be able to explain every line of it.
+Design choices favour the obvious over the clever. Every metric lives in a SQL
+file that states the question it answers, assumptions are collected in one
+place rather than scattered through the code, and nothing is computed twice in
+two languages. The test is whether any number on the dashboard can be traced to
+a query and defended out loud.

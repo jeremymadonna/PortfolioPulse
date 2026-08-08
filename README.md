@@ -313,8 +313,7 @@ the loss rates do not.
 
 ## Author
 
-Jeremy Madonna — built as a portfolio project for a credit portfolio monitoring
-and risk analytics role.
+Jeremy Madonna
 
 ## License
 
