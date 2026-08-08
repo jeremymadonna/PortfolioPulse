@@ -296,18 +296,6 @@ than crashing. That is deliberate.
 `notebooks/01_exploration.ipynb` profiles the raw file in 27 cells. It shows
 working; it is not part of the pipeline.
 
-## Mapping to the job posting
-
-| Posting requirement | Where this answers it |
-|---|---|
-| Dashboards monitoring credit portfolio performance | Four-page Streamlit dashboard, quarterly trend views |
-| Analysis of portfolio performance indicators | Default rate, exposure at default, LTV at default, coverage ratio by segment |
-| Interpret data, explain discrepancies, assess implications | Commentary with segment attribution, Business Insights |
-| Data quality analysis with governance teams | Ten rules, issue register, weighted score, reconciliation |
-| Migration of publications to a new data model | Star schema built from a raw flat source file |
-| SQL | Eight views using CTEs and window functions |
-| Power BI and Tableau | `export.py` writes flat marts to `powerbi/` |
-
 ## Guarantees and non-goals
 
 **Guaranteed.** Every reporting metric lives in a `.sql` file. The build is
