@@ -165,5 +165,5 @@ never carried forward — they belong to the period, not the loan.
 
 ## Licence
 
-Project code: MIT. The dataset it reads is governed by its authors' terms and
-is not covered by this licence.
+Project code: Apache License 2.0, see [LICENSE](LICENSE). The dataset it reads
+is governed by its authors' terms and is not covered by this licence.
