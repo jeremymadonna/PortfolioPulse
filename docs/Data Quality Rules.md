@@ -32,7 +32,7 @@ severity weight that passed. Weighting rather than counting rules equally means
 a wrong balance moves the score three times as far as a missing descriptive
 attribute.
 
-**Current score: 79.2 / 100** (7 of 10 rules passing).
+**Current score: 87.5 / 100** (8 of 10 rules passing).
 
 ## Findings on the real data
 
@@ -61,11 +61,27 @@ The source encodes property type as three one-hot flags. 9,818 loans have all
 three set to zero, which is a real "not stated" category rather than a defect.
 Surfaced as `Other / not stated` and rated LOW.
 
-### `row_dated_before_origination` — 2 rows — MEDIUM
+### `row_dated_before_origination` — now PASSING
 
-Two rows are dated before their own loan's stated origination period. A genuine
-source inconsistency. Too small to affect any aggregate, but excluded from
-vintage curves so it cannot create a negative age.
+This originally failed on 2 rows, then 5 on a rerun — and a count that changes
+between runs of the same pipeline is a bug, not a finding.
+
+The cause was ours. Origination attributes were collapsed per loan with
+`any_value()`, which picks arbitrarily. That is fine when the column really is
+constant, and in this source it is not: **439 loans report origination
+attributes that vary across their own rows** (49 with more than one `orig_time`,
+381 with more than one FICO). Loan 11682 flips between `orig_time` 18 and −14
+mid-panel. Whichever value `any_value()` happened to return changed
+`quarters_on_book` for that loan, so the count moved between runs.
+
+Fixed by taking the value reported at the loan's **earliest** period
+(`arg_min(col, time)`), which is deterministic and defensible, and by having the
+panel read `orig_time` from `dim_loan` rather than deriving it again so the two
+tables cannot disagree. The rule now passes with zero rows, and two consecutive
+rebuilds produce byte-identical tables.
+
+The underlying source inconsistency has not disappeared — it is logged at
+ingestion as `inconsistent_origination_attributes`.
 
 ## Defects found and corrected at ingestion
 
@@ -76,6 +92,7 @@ wrong in the source from what remains in the model.
 |---|---|---|---|
 | Duplicate loan-periods | HIGH | 339 | One row kept per loan-period, lower balance (conservative). 27 pairs had conflicting balances. |
 | Missing mid-panel periods | MEDIUM | 1,582 | Forward-filled across 1,168 loans. Every filled row flagged `is_forward_filled`. |
+| Inconsistent origination attributes | MEDIUM | 439 loans | Value at the loan's earliest period is used (`arg_min`), so the result is deterministic. |
 
 The forward-fill synthesises observations that were never reported. It is
 flagged, logged, excluded from roll rates, and declared in

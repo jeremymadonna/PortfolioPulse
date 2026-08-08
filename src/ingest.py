@@ -89,18 +89,23 @@ def build_dim_loan(con):
     CREATE OR REPLACE TABLE dim_loan AS
     WITH one_row_per_loan AS (
         -- Origination attributes repeat on every panel row; take them once.
+        -- Origination attributes SHOULD be constant across a loan's rows, but in
+        -- this source they are not: 49 loans report more than one orig_time and
+        -- 381 report more than one FICO. any_value() would pick arbitrarily and
+        -- make the whole pipeline non-deterministic, so take the value reported
+        -- at the loan's EARLIEST period and log the inconsistency.
         SELECT id,
-               any_value(orig_time)               AS orig_time,
-               any_value(first_time)              AS first_time,
-               any_value(mat_time)                AS mat_time,
-               any_value(FICO_orig_time)          AS fico,
-               any_value(LTV_orig_time)           AS original_ltv,
-               any_value(balance_orig_time)       AS original_balance,
-               any_value(Interest_Rate_orig_time) AS original_interest_rate,
-               any_value(investor_orig_time)      AS investor_flag,
-               any_value(REtype_CO_orig_time)     AS re_co,
-               any_value(REtype_PU_orig_time)     AS re_pu,
-               any_value(REtype_SF_orig_time)     AS re_sf
+               arg_min(orig_time, time)               AS orig_time,
+               arg_min(first_time, time)              AS first_time,
+               arg_min(mat_time, time)                AS mat_time,
+               arg_min(FICO_orig_time, time)          AS fico,
+               arg_min(LTV_orig_time, time)           AS original_ltv,
+               arg_min(balance_orig_time, time)       AS original_balance,
+               arg_min(Interest_Rate_orig_time, time) AS original_interest_rate,
+               arg_min(investor_orig_time, time)      AS investor_flag,
+               arg_min(REtype_CO_orig_time, time)     AS re_co,
+               arg_min(REtype_PU_orig_time, time)     AS re_pu,
+               arg_min(REtype_SF_orig_time, time)     AS re_sf
         FROM {src} GROUP BY id
     )
     SELECT
@@ -177,7 +182,7 @@ def build_fact_loan_quarter(con):
     # --- raw panel, deduplicated -------------------------------------------
     con.execute("""
     CREATE OR REPLACE TABLE stg_panel AS
-    SELECT id AS loan_id, time AS period, orig_time,
+    SELECT id AS loan_id, time AS period,
            balance_time, LTV_time, interest_rate_time, status_time,
            default_time, payoff_time
     FROM {src}
@@ -192,6 +197,17 @@ def build_fact_loan_quarter(con):
            "FAIL" if dropped else "PASS", dropped,
            "Duplicate loan-period rows in source; kept the lower balance of each pair")
 
+    inconsistent = con.execute("""
+        SELECT count(*) FROM (
+            SELECT id FROM %s GROUP BY id
+            HAVING count(DISTINCT orig_time) > 1 OR count(DISTINCT FICO_orig_time) > 1
+                OR count(DISTINCT LTV_orig_time) > 1 OR count(DISTINCT balance_orig_time) > 1)
+    """ % SRC).fetchone()[0]
+    log_dq(con, "1-ingest", "inconsistent_origination_attributes", "MEDIUM",
+           "FAIL" if inconsistent else "PASS", inconsistent,
+           "Loans whose origination attributes vary across their own rows; the "
+           "value at the earliest period is used")
+
     # --- macro variables are period-level facts, held once ------------------
     con.execute("""
     CREATE OR REPLACE TABLE dim_period_macro AS
@@ -204,20 +220,20 @@ def build_fact_loan_quarter(con):
     con.execute("""
     CREATE OR REPLACE TABLE stg_panel_filled AS
     WITH bounds AS (
-        SELECT loan_id, min(period) AS mn, max(period) AS mx, any_value(orig_time) AS orig_time
+        SELECT loan_id, min(period) AS mn, max(period) AS mx
         FROM stg_panel GROUP BY loan_id
     ),
     spine AS (   -- every period between a loan's first and last report
-        SELECT loan_id, orig_time, unnest(generate_series(mn, mx)) AS period FROM bounds
+        SELECT loan_id, unnest(generate_series(mn, mx)) AS period FROM bounds
     ),
     joined AS (
-        SELECT s.loan_id, s.period, s.orig_time,
+        SELECT s.loan_id, s.period,
                p.balance_time, p.LTV_time, p.interest_rate_time,
                p.status_time, p.default_time, p.payoff_time,
                p.loan_id IS NULL AS is_forward_filled
         FROM spine s LEFT JOIN stg_panel p USING (loan_id, period)
     )
-    SELECT loan_id, period, orig_time, is_forward_filled,
+    SELECT loan_id, period, is_forward_filled,
            last_value(balance_time      IGNORE NULLS) OVER w AS balance_time,
            last_value(LTV_time          IGNORE NULLS) OVER w AS LTV_time,
            last_value(interest_rate_time IGNORE NULLS) OVER w AS interest_rate_time,
@@ -245,7 +261,7 @@ def build_fact_loan_quarter(con):
         p.period,
         {reporting}                               AS reporting_quarter,
         -- Quarters on book: the analogue of months on book.
-        p.period - p.orig_time                    AS quarters_on_book,
+        p.period - l.orig_time                    AS quarters_on_book,
         p.balance_time                            AS current_balance,
         p.LTV_time                                AS current_ltv,
         {cur_ltv_band}                            AS current_ltv_band,

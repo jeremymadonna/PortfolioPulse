@@ -156,7 +156,12 @@ records every finding with a run timestamp, severity and row count.
 |---|---|---|---|
 | Duplicate loan-periods (27 with conflicting balances) | HIGH | 339 | One row kept per loan-period, lower balance |
 | Missing mid-panel periods | MEDIUM | 1,582 | Forward-filled, every row flagged `is_forward_filled` |
-| Rows dated before stated origination | LOW | few | Excluded from vintage curves |
+| Inconsistent origination attributes | MEDIUM | 439 loans | Value at the loan's earliest period used, so builds are reproducible |
+| Balance rising on a repaying loan | MEDIUM | 21,290 | **Left failing** — negative amortisation, real product behaviour |
+| Property type not stated | LOW | 9,818 | **Left failing** — a real 'not stated' category |
+
+Current Data Quality Score: **87.5 / 100**, 8 of 10 rules passing. The pipeline
+is deterministic: two consecutive rebuilds produce identical tables.
 
 Forward-filled rows synthesise observations that were never reported, so they
 carry a flag and are excluded from roll rates entirely. Macro variables are

@@ -91,6 +91,14 @@ true value for their quarter.
 Filled rows are 0.24% of portfolio balance. The headline cohort comparison is
 unchanged by both this and the deduplication.
 
+**Origination attributes are taken from the loan's earliest period.** 439 loans
+report origination attributes that change across their own rows — 49 with more
+than one `orig_time`, 381 with more than one FICO. Collapsing these with an
+arbitrary pick made the pipeline non-deterministic, so the value reported at the
+earliest period is used (`arg_min(col, time)`). The panel reads `orig_time` from
+`dim_loan` rather than deriving it separately, so the two cannot disagree. Two
+consecutive rebuilds now produce identical tables.
+
 **Left-censored loans are excluded from vintage curves.** 1,126 loans predate
 the observation window, so their early life is missing and any that had already
 defaulted are absent entirely. Including them would bias every cohort curve
